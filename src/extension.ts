@@ -14,9 +14,10 @@ import {
   parseArb,
   suggestKey,
 } from './core/arb';
-import { callExpression, extractionEdits } from './core/dartEdit';
+import { callExpression, extractionEdits, importEdits } from './core/dartEdit';
 import { Candidate, findHardcodedStrings, stringAt } from './core/hardcoded';
-import { L10nProject, accessorFor, findRoot, generateCommand, loadProject } from './core/project';
+import { HELPER_FILE, localeFile, previewFunctionName, previewHelper, widgetClassAt } from './core/previews';
+import { L10nProject, accessorFor, findRoot, generateCommand, loadProject, packageUri } from './core/project';
 
 const SOURCE = 'Flutter Localization';
 const GUIDE_URL = 'https://flutterlocalisation.com/blog/migrate-intl-utils-flutter-intl-to-gen-l10n';
@@ -84,8 +85,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerCodeActionsProvider({ language: 'dart', scheme: 'file' }, new ExtractActions(), {
       providedCodeActionKinds: [vscode.CodeActionKind.QuickFix, vscode.CodeActionKind.RefactorExtract],
     }),
+    vscode.languages.registerCodeActionsProvider({ language: 'dart', scheme: 'file' }, new PreviewActions(), {
+      providedCodeActionKinds: [vscode.CodeActionKind.RefactorRewrite],
+    }),
     vscode.languages.registerHoverProvider({ language: 'dart', scheme: 'file' }, { provideHover }),
     vscode.commands.registerCommand('flutterL10n.extract', extract),
+    vscode.commands.registerCommand('flutterL10n.previewLocales', previewLocales),
     vscode.commands.registerCommand('flutterL10n.generate', async () => {
       const project = await pickProject();
       if (project) await generate(project, true);
@@ -451,6 +456,8 @@ async function generate(project: L10nProject, showOutput: boolean): Promise<bool
     });
     child.on('close', (code) => {
       if (code === 0) {
+        // The pseudo-locale overrides every message, so it follows the ARB files.
+        if (fs.existsSync(helperPath(project))) writeHelper(project);
         vscode.window.setStatusBarMessage('$(check) Localizations regenerated', 3000);
         resolve(true);
       } else {
@@ -461,6 +468,118 @@ async function generate(project: L10nProject, showOutput: boolean): Promise<bool
   }).finally(() => running.delete(project.root));
   running.set(project.root, job);
   return job;
+}
+
+// ---------------------------------------------------------------- previews
+
+class PreviewActions implements vscode.CodeActionProvider {
+  provideCodeActions(doc: vscode.TextDocument, range: vscode.Range): vscode.CodeAction[] {
+    const src = doc.getText();
+    const widget = widgetClassAt(src, doc.offsetAt(range.start));
+    // Only on the declaration, so the light bulb does not follow every line of the class.
+    if (!widget || range.start.line !== doc.positionAt(widget.start).line) return [];
+    const a = new vscode.CodeAction('Preview in all locales', vscode.CodeActionKind.RefactorRewrite);
+    a.command = { command: 'flutterL10n.previewLocales', title: a.title, arguments: [doc.uri, widget.start] };
+    return [a];
+  }
+}
+
+const helperPath = (project: L10nProject): string =>
+  path.join(isInside(project.outputDir, path.join(project.root, 'lib')) ? project.outputDir : path.join(project.root, 'lib', 'l10n'), HELPER_FILE);
+
+function writeHelper(project: L10nProject): void {
+  const template = readArb(project.templateArb);
+  const templateLocale = arbLocale(path.basename(project.templateArb), arbPrefix(path.basename(project.templateArb), template), template) ?? 'en';
+  const file = localeFile(project, templateLocale);
+  const source = previewHelper({
+    project,
+    templateLocale,
+    templateSource: fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : undefined,
+  });
+  const target = helperPath(project);
+  if (fs.existsSync(target) && fs.readFileSync(target, 'utf8') === source) return;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, source);
+}
+
+/** False when the Flutter SDK is found and is too old for multi-previews. */
+function flutterHasPreviews(): boolean {
+  let exe = flutterExecutable();
+  if (!path.isAbsolute(exe)) {
+    const name = process.platform === 'win32' ? 'flutter.bat' : 'flutter';
+    const dir = (process.env.PATH ?? '').split(path.delimiter).find((d) => fs.existsSync(path.join(d, name)));
+    if (!dir) return true;
+    exe = path.join(dir, name);
+  }
+  try {
+    const sdk = path.dirname(path.dirname(fs.realpathSync(exe)));
+    const api = path.join(sdk, 'packages', 'flutter', 'lib', 'src', 'widget_previews', 'widget_previews.dart');
+    return fs.readFileSync(api, 'utf8').includes('List<Preview> transform()');
+  } catch {
+    return true;
+  }
+}
+
+/** Adds a `@LocalePreview()` function for the widget class at [offset] and returns its name. */
+async function previewLocales(uri?: vscode.Uri, offset?: number): Promise<string | undefined> {
+  const doc = uri ? await vscode.workspace.openTextDocument(uri) : vscode.window.activeTextEditor?.document;
+  if (!doc || doc.languageId !== 'dart') {
+    vscode.window.showWarningMessage('Put the cursor in a widget class in a Dart file.');
+    return undefined;
+  }
+  const src = doc.getText();
+  const widget = widgetClassAt(src, offset ?? doc.offsetAt(vscode.window.activeTextEditor!.selection.active));
+  if (!widget) {
+    vscode.window.showWarningMessage('Put the cursor in a class that extends StatelessWidget, StatefulWidget or another widget.');
+    return undefined;
+  }
+  const project = projectFor(doc.uri);
+  if (!project) {
+    vscode.window.showWarningMessage('Locale previews need a gen-l10n setup (an l10n.yaml next to pubspec.yaml).');
+    return undefined;
+  }
+  if (project.mode === 'intl_utils') {
+    const c = await vscode.window.showWarningMessage(
+      'Locale previews need gen-l10n. intl_utils projects can move to it in a few minutes and keep their S class.',
+      'Migration guide',
+    );
+    if (c) void vscode.env.openExternal(vscode.Uri.parse(GUIDE_URL));
+    return undefined;
+  }
+  if (!flutterHasPreviews()) {
+    vscode.window.showWarningMessage('Locale previews need Flutter 3.38 or later, which has widget previews. Run flutter upgrade.');
+    return undefined;
+  }
+  if (!fs.existsSync(project.outputFile)) await generate(project, false);
+  writeHelper(project);
+
+  const name = previewFunctionName(widget.name);
+  const editor = await vscode.window.showTextDocument(doc);
+  const existing = new RegExp(`\\bWidget\\s+${name}\\s*\\(`).exec(src);
+  if (existing) {
+    const at = doc.positionAt(existing.index);
+    editor.selection = new vscode.Selection(at, at);
+    editor.revealRange(new vscode.Range(at, at));
+    return name;
+  }
+
+  const body = src.slice(widget.start, widget.end);
+  const ctor = new RegExp(`\\bconst\\s+${widget.name}\\s*\\(([^)]*)\\)`).exec(body);
+  const simple = ctor && !/\brequired\b/.test(ctor[1]) && !/^\s*[^{[\s]/.test(ctor[1]);
+  const call = simple ? `const ${widget.name}()` : `${widget.name}()`;
+  const snippet = new vscode.SnippetString(`\n\n@LocalePreview()\nWidget ${name}() => \${1:${call}};`);
+
+  const helperUri = packageUri(project, helperPath(project)) ??
+    path.relative(path.dirname(doc.fileName), helperPath(project)).split(path.sep).join('/');
+  const [imp] = importEdits(src, [helperUri]);
+  if (imp) await editor.edit((b) => b.insert(doc.positionAt(imp.start), imp.text), { undoStopBefore: true, undoStopAfter: false });
+  // Imports sit above every class, so the class moved down by exactly the import.
+  await editor.insertSnippet(snippet, doc.positionAt(widget.end + (imp?.text.length ?? 0)), {
+    undoStopBefore: false,
+    undoStopAfter: true,
+  });
+  if (!simple) vscode.window.showInformationMessage(`Fill in the arguments ${widget.name} needs, then open the Flutter Widget Previewer.`);
+  return name;
 }
 
 // ---------------------------------------------------------------- fl CLI

@@ -1,7 +1,7 @@
 # Flutter Localization (ARB, gen-l10n)
 
-Find the text in your Flutter app that is not translated yet, move it to your ARB files with one quick fix, and
-see every translation without leaving the code. Works with Flutter's built-in **gen-l10n**, and with projects
+Find the text in your Flutter app that is not translated yet, move it to your ARB files with one quick fix,
+see every translation without leaving the code, and preview your widgets in every language. Works with Flutter's built-in **gen-l10n**, and with projects
 still on **intl_utils / Flutter Intl**, which is discontinued.
 
 ## Features
@@ -33,6 +33,23 @@ new getter exists right away.
 **Translations on hover.** Hover over `.helloName` to see the text in every locale, with missing ones marked.
 
 **Missing translations.** Each locale's ARB file shows which keys the template has and it does not.
+
+**Preview a widget in every locale.** On a widget class, choose **Preview in all locales** from the light bulb or
+the context menu. The extension adds
+
+```dart
+@LocalePreview()
+Widget checkoutCardLocalePreview() => const CheckoutCard();
+```
+
+and the Flutter Widget Previewer shows the widget once per supported locale, once right to left (when no
+supported locale is already) and once in a pseudo-locale: every message accented and 40% longer, in brackets, so
+clipped and overflowing text shows up before any translation exists.
+
+![The same widget in Arabic, English, French and the pseudo-locale](media/locale-preview.png)
+
+`LocalePreview` lives in `locale_preview.dart` next to your generated localizations and is rewritten whenever they
+are regenerated. It takes `group`, `size` and `pseudo: false`. Previews need Flutter 3.38 or later.
 
 ## Supported setups
 

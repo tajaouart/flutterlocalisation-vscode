@@ -90,4 +90,17 @@ suite('Flutter Localization', () => {
     assert.equal(d.severity, vscode.DiagnosticSeverity.Warning);
     assert.match(d.message, /^3 keys missing in fr: cart, welcomeBack, helloName\./);
   });
+  test('offers Preview in all locales on a widget declaration only', async () => {
+    const doc = await vscode.workspace.openTextDocument(main());
+    const titles = async (line: number): Promise<string[]> => {
+      const at = new vscode.Position(line, 8);
+      const actions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
+        'vscode.executeCodeActionProvider', doc.uri, new vscode.Range(at, at), vscode.CodeActionKind.RefactorRewrite.value,
+      );
+      return actions.map((a) => a.title);
+    };
+    const header = doc.getText().split('\n').findIndex((l) => l.startsWith('class Home'));
+    assert.ok((await titles(header)).includes('Preview in all locales'));
+    assert.ok(!(await titles(header + 3)).includes('Preview in all locales'));
+  });
 });

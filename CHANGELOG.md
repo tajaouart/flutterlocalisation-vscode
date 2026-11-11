@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- **Preview in all locales** on a widget class adds a `@LocalePreview()` function. The Flutter Widget Previewer
+  then shows the widget in every supported locale, right to left, and in a pseudo-locale with accented text 40%
+  longer, to catch clipping before translating. Works with gen-l10n and the `flutter_localisation` package;
+  needs Flutter 3.38 or later.
+
 ## 0.1.0
 
 - Hardcoded user-facing strings in `lib/` are reported (`Text`, `SelectableText`, `TextSpan`, and label-like

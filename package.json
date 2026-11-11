@@ -1,8 +1,8 @@
 {
   "name": "flutter-l10n",
   "displayName": "Flutter Localization (ARB, gen-l10n)",
-  "description": "Find hardcoded strings in Flutter apps, extract them to ARB files with one quick fix, regenerate gen-l10n on save and see every translation on hover. A maintained replacement for the Flutter Intl extension.",
-  "version": "0.1.0",
+  "description": "Find hardcoded strings in Flutter apps, extract them to ARB files with one quick fix, preview widgets in every locale, right to left and in a pseudo-locale, regenerate gen-l10n on save and see every translation on hover. A maintained replacement for the Flutter Intl extension.",
+  "version": "0.2.0",
   "publisher": "flutterlocalisation",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -32,7 +32,10 @@
     "gen-l10n",
     "localization",
     "translation",
-    "flutter intl"
+    "flutter intl",
+    "widget preview",
+    "pseudo-localization",
+    "rtl"
   ],
   "activationEvents": [
     "onLanguage:dart",
@@ -45,6 +48,11 @@
       {
         "command": "flutterL10n.extract",
         "title": "Extract String to ARB",
+        "category": "Flutter Localization"
+      },
+      {
+        "command": "flutterL10n.previewLocales",
+        "title": "Preview Widget in All Locales",
         "category": "Flutter Localization"
       },
       {
@@ -78,11 +86,20 @@
         {
           "command": "flutterL10n.extract",
           "when": "editorLangId == dart"
+        },
+        {
+          "command": "flutterL10n.previewLocales",
+          "when": "editorLangId == dart"
         }
       ],
       "editor/context": [
         {
           "command": "flutterL10n.extract",
+          "when": "editorLangId == dart",
+          "group": "1_modification"
+        },
+        {
+          "command": "flutterL10n.previewLocales",
           "when": "editorLangId == dart",
           "group": "1_modification"
         }

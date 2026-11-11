@@ -30,14 +30,18 @@ export function extractionEdits(
     const after = src.slice(at + 'const'.length).match(/^\s*/)?.[0].length ?? 0;
     edits.push({ start: at, end: at + 'const'.length + after, text: '' });
   }
-  const missing = imports.filter((uri) => !importsUri(src, uri));
-  if (missing.length) {
-    const at = importInsertOffset(src);
-    const lines = missing.map((uri) => `import '${uri}';\n`).join('');
-    const needsBlank = at > 0 && !/\n\s*$/.test(src.slice(0, at));
-    edits.push({ start: at, end: at, text: needsBlank ? `\n${lines}` : lines });
-  }
+  edits.push(...importEdits(src, imports));
   return edits.sort((a, b) => b.start - a.start);
+}
+
+/** An edit adding the [imports] that [src] does not have yet, or none. */
+export function importEdits(src: string, imports: string[]): TextEdit[] {
+  const missing = imports.filter((uri) => !importsUri(src, uri));
+  if (!missing.length) return [];
+  const at = importInsertOffset(src);
+  const lines = missing.map((uri) => `import '${uri}';\n`).join('');
+  const needsBlank = at > 0 && !/\n\s*$/.test(src.slice(0, at));
+  return [{ start: at, end: at, text: needsBlank ? `\n${lines}` : lines }];
 }
 
 export function applyEdits(src: string, edits: TextEdit[]): string {
