@@ -1,0 +1,11 @@
+name: shop
+environment:
+  sdk: ^3.4.0
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+flutter:
+  generate: true

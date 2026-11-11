@@ -1,0 +1,165 @@
+{
+  "name": "flutter-l10n",
+  "displayName": "Flutter Localization (ARB, gen-l10n)",
+  "description": "Find hardcoded strings in Flutter apps, extract them to ARB files with one quick fix, regenerate gen-l10n on save and see every translation on hover. A maintained replacement for the Flutter Intl extension.",
+  "version": "0.1.0",
+  "publisher": "flutterlocalisation",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://flutterlocalisation.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tajaouart/flutterlocalisation-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/tajaouart/flutterlocalisation-vscode/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "flutter",
+    "dart",
+    "arb",
+    "l10n",
+    "i18n",
+    "intl",
+    "gen-l10n",
+    "localization",
+    "translation",
+    "flutter intl"
+  ],
+  "activationEvents": [
+    "onLanguage:dart",
+    "workspaceContains:**/l10n.yaml",
+    "workspaceContains:**/*.arb"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "flutterL10n.extract",
+        "title": "Extract String to ARB",
+        "category": "Flutter Localization"
+      },
+      {
+        "command": "flutterL10n.generate",
+        "title": "Regenerate Localizations",
+        "category": "Flutter Localization"
+      },
+      {
+        "command": "flutterL10n.openTemplate",
+        "title": "Open Template ARB File",
+        "category": "Flutter Localization"
+      },
+      {
+        "command": "flutterL10n.doctor",
+        "title": "Check Localization Setup",
+        "category": "Flutter Localization"
+      },
+      {
+        "command": "flutterL10n.migrateGuide",
+        "title": "Migrate from Flutter Intl (intl_utils) to gen-l10n",
+        "category": "Flutter Localization"
+      },
+      {
+        "command": "flutterL10n.sync",
+        "title": "Translate and Sync with FlutterLocalisation",
+        "category": "Flutter Localization"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "flutterL10n.extract",
+          "when": "editorLangId == dart"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "flutterL10n.extract",
+          "when": "editorLangId == dart",
+          "group": "1_modification"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "flutterL10n.extract",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorTextFocus && editorLangId == dart"
+      }
+    ],
+    "configuration": {
+      "title": "Flutter Localization",
+      "properties": {
+        "flutterL10n.hardcodedStrings.severity": {
+          "type": "string",
+          "enum": [
+            "off",
+            "hint",
+            "information",
+            "warning"
+          ],
+          "default": "information",
+          "description": "How hardcoded user-facing strings in lib/ are reported. Add `// l10n-ignore` on a line, or the line above, to skip it."
+        },
+        "flutterL10n.generateOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Regenerate the localizations (flutter gen-l10n, or the generator your project uses) when an ARB file is saved or a string is extracted."
+        },
+        "flutterL10n.flutterPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the flutter executable. Empty uses dart.flutterSdkPath from the Dart extension, then flutter on the PATH."
+        },
+        "flutterL10n.accessor": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Expression inserted for an extracted string, with `{key}` for the key, for example `context.l10n.{key}`. Empty picks one from your setup. Imports are not added for a custom expression."
+        },
+        "flutterL10n.addMetadata": {
+          "type": "boolean",
+          "default": false,
+          "description": "Write an @key entry for every extracted string, not only for strings with placeholders."
+        },
+        "flutterL10n.missingTranslations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn in each locale's ARB file about keys the template has and it does not."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "bundle": "node esbuild.mjs",
+    "lint": "tsc -p . --noEmit",
+    "test:unit": "npm run compile && node --test out/test/unit/",
+    "test:integration": "npm run compile && npm run bundle && node out/test/integration/run.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "vscode:prepublish": "npm run bundle",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "yaml": "2.6.1"
+  },
+  "devDependencies": {
+    "@types/mocha": "10.0.10",
+    "@types/node": "20.17.6",
+    "@types/vscode": "1.90.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.1.1-0",
+    "esbuild": "0.24.0",
+    "mocha": "10.8.2",
+    "ovsx": "1.4.0",
+    "typescript": "5.6.3"
+  }
+}
