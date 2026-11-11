@@ -142,7 +142,7 @@
     "compile": "tsc -p .",
     "bundle": "node esbuild.mjs",
     "lint": "tsc -p . --noEmit",
-    "test:unit": "npm run compile && node --test out/test/unit/",
+    "test:unit": "npm run compile && node --test out/test/unit/*.test.js",
     "test:integration": "npm run compile && npm run bundle && node out/test/integration/run.js",
     "test": "npm run test:unit && npm run test:integration",
     "vscode:prepublish": "npm run bundle",
